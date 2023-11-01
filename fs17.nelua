@@ -1,0 +1,43 @@
+local function fs17_path_new(_: cstring): pointer <cimport> end
+local function fs17_path_gc(_: pointer): void <cimport> end
+local function fs17_absolute(_: pointer): cstring <cimport> end
+
+
+
+global fs17 = @record{}
+
+global fs17.Path = @record{
+  _path: pointer, -- Internal std::filesystem::path
+  path: string -- Exported path object
+}
+
+function fs17.Path.new(path: string): fs17.Path
+  return fs17.Path{fs17_path_new(path), path}
+end
+
+function fs17.Path:destroy(): void
+  print("called", self.path)
+  fs17_path_gc(self._path)
+end
+
+function fs17.Path:__gc(): void
+  self:destroy()
+end
+
+function fs17.Path:__close(): void
+  self:destroy()
+end
+
+function fs17.absolute(path: overload(fs17.Path, string)): string
+  ## if path.type.is_string then
+    local newpath <close> = fs17.Path.new(path)
+  ## else
+    local newpath = path
+  ## end
+  return fs17_absolute(newpath._path)
+end
+
+local path = fs17.Path.new("hi")
+defer path:destroy() end
+print(fs17.absolute(path))
+print(fs17.absolute("hello"))
