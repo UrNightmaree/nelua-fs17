@@ -1,0 +1,54 @@
+require("allocators.default")
+
+local function fsxx_path_new(_: cstring): pointer <cimport> end
+local function fsxx_path_gc(_: pointer): void <cimport> end
+local function fsxx_path_tostring(_: pointer): cstring <cimport> end
+local function fsxx_absolute(_: pointer): pointer <cimport> end
+
+global fsxx = @record{}
+
+global fsxx.Path = @record{
+  _path: pointer, -- Internal std::filesystem::path
+}
+
+local fsxx_path = fsxx.Path
+
+##[[
+local fsxx_path = fsxx_path.value
+fsxx_path.is_record = true
+fsxx_path.is_fsxx_path = true
+]]
+
+function fsxx.Path.new(path: string): fsxx.Path
+  return fsxx.Path{fsxx_path_new(path)}
+end
+
+function fsxx.Path:destroy(): void
+  print "destroyed"
+  fsxx_path_gc(self._path)
+  self._path = nilptr
+end
+
+function fsxx.Path:__tostring(): string
+  return fsxx_path_tostring(self._path)
+end
+
+function fsxx.Path:__gc(): void
+  self:destroy()
+end
+
+function fsxx.Path:__close(): void
+  self:destroy()
+end
+
+function fsxx.absolute(path: overload(fsxx.Path, string)): fsxx.Path
+  ## if path.type.is_string then
+    local newpath = fsxx.Path.new(path)
+  ## else
+    local newpath = path
+  ## end
+  local absolute_path = fsxx_absolute(newpath._path)
+  return fsxx.Path{absolute_path}
+end
+
+print(fsxx.absolute("new"))
